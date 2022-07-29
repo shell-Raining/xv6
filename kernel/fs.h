@@ -4,6 +4,10 @@
 #define ROOTINO 1   // root i-number
 #define BSIZE 1024  // block size
 
+// declared in this file is not bug, just for lsp diagnostics
+typedef unsigned int uint;
+typedef unsigned short ushort;
+
 // Disk layout:
 // [ boot block | super block | log | inode blocks |
 //                                          free bit map | data blocks]
