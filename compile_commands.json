@@ -1,0 +1,19 @@
+[
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-DSOL_SYSCALL",
+      "-DLAB_SYSCALL",
+      "-Werror",
+      "-Wall",
+      "-I.",
+      "-o",
+      "mkfs/mkfs",
+      "mkfs/mkfs.c"
+    ],
+    "directory": "/Users/luxiangyun/Documents/xv6",
+    "file": "/Users/luxiangyun/Documents/xv6/mkfs/mkfs.c",
+    "output": "/Users/luxiangyun/Documents/xv6/mkfs/mkfs"
+  }
+]
