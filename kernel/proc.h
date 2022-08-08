@@ -4,6 +4,7 @@ struct context {
   uint64 sp;
 
   // callee-saved
+  // 被调用者保存寄存器
   uint64 s0;
   uint64 s1;
   uint64 s2;
