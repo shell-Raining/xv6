@@ -99,6 +99,7 @@ static uint64 (*syscalls[])(void) = {
   [SYS_trace] = sys_trace,
 };
 
+// ISSUE:这玩意到底是干什么的，只在trap文件中出现过一次
 void syscall(void) {
   int          num;
   struct proc* p = myproc();
