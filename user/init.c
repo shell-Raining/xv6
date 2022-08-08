@@ -23,7 +23,7 @@ main(void)
   dup(0);  // stdout
   dup(0);  // stderr
 
-  // TODO: 为什么这里要用两个无尽的循环
+  // ISSUE: 为什么这里要用两个无尽的循环
   for(;;){
     printf("init: starting sh\n");
     pid = fork();
