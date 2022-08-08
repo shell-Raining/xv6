@@ -413,6 +413,18 @@
   {
     "arguments": [
       "/usr/bin/riscv64-linux-gnu-gcc",
+      "-c",
+      "-o",
+      "kernel/kernelvec.o",
+      "kernel/kernelvec.S"
+    ],
+    "directory": "/home/shellraining/Documents/xv6",
+    "file": "/home/shellraining/Documents/xv6/kernel/kernelvec.S",
+    "output": "/home/shellraining/Documents/xv6/kernel/kernelvec.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/riscv64-linux-gnu-gcc",
       "-Wall",
       "-O",
       "-fno-omit-frame-pointer",
@@ -434,18 +446,6 @@
     "directory": "/home/shellraining/Documents/xv6",
     "file": "/home/shellraining/Documents/xv6/kernel/sysfile.c",
     "output": "/home/shellraining/Documents/xv6/kernel/sysfile.o"
-  },
-  {
-    "arguments": [
-      "/usr/bin/riscv64-linux-gnu-gcc",
-      "-c",
-      "-o",
-      "kernel/kernelvec.o",
-      "kernel/kernelvec.S"
-    ],
-    "directory": "/home/shellraining/Documents/xv6",
-    "file": "/home/shellraining/Documents/xv6/kernel/kernelvec.S",
-    "output": "/home/shellraining/Documents/xv6/kernel/kernelvec.o"
   },
   {
     "arguments": [
