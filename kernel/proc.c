@@ -275,6 +275,9 @@ int fork(void) {
       np->ofile[i] = filedup(p->ofile[i]);
   np->cwd = idup(p->cwd);
 
+  // copy the mask of tracing syscall
+  np->mask = p->mask;
+
   safestrcpy(np->name, p->name, sizeof(p->name));
 
   pid = np->pid;
@@ -583,11 +586,11 @@ int either_copyin(void* dst, int user_src, uint64 src, uint64 len) {
 // Runs when user types ^P on console.
 // No lock to avoid wedging a stuck machine further.
 void procdump(void) {
-  static char* states[] = {[UNUSED] "unused",
-                           [SLEEPING] "sleep ",
-                           [RUNNABLE] "runble",
-                           [RUNNING] "run   ",
-                           [ZOMBIE] "zombie"};
+  static char* states[] = {[UNUSED]   = "unused",
+                           [SLEEPING] = "sleep ",
+                           [RUNNABLE] = "runble",
+                           [RUNNING]  = "run   ",
+                           [ZOMBIE]   = "zombie"};
   struct proc* p;
   char*        state;
 
@@ -602,4 +605,13 @@ void procdump(void) {
     printf("%d %s %s", p->pid, state, p->name);
     printf("\n");
   }
+}
+
+// set tracing flag for this process
+int trace(int mask) {
+  // set the mask to represent the system call to trace
+  struct proc *p = myproc();
+  p->mask = mask;
+
+  return 0;
 }

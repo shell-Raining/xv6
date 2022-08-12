@@ -27,6 +27,8 @@ int fetchstr(uint64 addr, char* buf, int max) {
   return strlen(buf);
 }
 
+// ISSUE:为什么只支持6个参数
+// 从当前进程中的陷阱帧中获得参数
 static uint64 argraw(int n) {
   struct proc* p = myproc();
   switch (n) {
@@ -42,6 +44,7 @@ static uint64 argraw(int n) {
 }
 
 // Fetch the nth 32-bit system call argument.
+// 获取第n个参数，将其传到ip所在内存处
 int argint(int n, int* ip) {
   *ip = argraw(n);
   return 0;
@@ -50,6 +53,7 @@ int argint(int n, int* ip) {
 // Retrieve an argument as a pointer.
 // Doesn't check for legality, since
 // copyin/copyout will do that.
+// 获取一个指针作为参数，不检查合法性，因为cpin cpout检查了
 int argaddr(int n, uint64* ip) {
   *ip = argraw(n);
   return 0;
@@ -58,6 +62,7 @@ int argaddr(int n, uint64* ip) {
 // Fetch the nth word-sized system call argument as a null-terminated string.
 // Copies into buf, at most max.
 // Returns string length if OK (including nul), -1 if error.
+// 获取字符串作为参数，其长度不大于max
 int argstr(int n, char* buf, int max) {
   uint64 addr;
   if (argaddr(n, &addr) < 0)
@@ -88,6 +93,7 @@ extern uint64 sys_write(void);
 extern uint64 sys_uptime(void);
 extern uint64 sys_trace(void);
 
+// ISSUE:为什么要返回uint类型的整数
 static uint64 (*syscalls[])(void) = {
   [SYS_fork] = sys_fork,   [SYS_exit] = sys_exit,     [SYS_wait] = sys_wait,
   [SYS_pipe] = sys_pipe,   [SYS_read] = sys_read,     [SYS_kill] = sys_kill,
@@ -99,7 +105,16 @@ static uint64 (*syscalls[])(void) = {
   [SYS_trace] = sys_trace,
 };
 
-// ISSUE:这玩意到底是干什么的，只在trap文件中出现过一次
+static char* syscallName[] = {
+  [SYS_fork] = "fork",   [SYS_exit] = "exit",     [SYS_wait] = "wait",     [SYS_pipe] = "pipe",
+  [SYS_read] = "read",   [SYS_kill] = "kill",     [SYS_exec] = "exec",     [SYS_fstat] = "fstat",
+  [SYS_chdir] = "chdir", [SYS_dup] = "dup",       [SYS_getpid] = "getpid", [SYS_sbrk] = "sbrk",
+  [SYS_sleep] = "sleep", [SYS_uptime] = "uptime", [SYS_open] = "open",     [SYS_write] = "write",
+  [SYS_mknod] = "mknod", [SYS_unlink] = "unlink", [SYS_link] = "link",     [SYS_mkdir] = "mkdir",
+  [SYS_close] = "close", [SYS_trace] = "trace",
+};
+
+// 本函数在陷入后使用，从trapframe中获得调用参数，选择合适的系统调用
 void syscall(void) {
   int          num;
   struct proc* p = myproc();
@@ -107,6 +122,12 @@ void syscall(void) {
   num = p->trapframe->a7;
   if (num > 0 && num < NELEM(syscalls) && syscalls[num]) {
     p->trapframe->a0 = syscalls[num]();
+
+    // determine whether the upcomming syscall is trace enabled
+    // TODO: implement tracking of fork
+    if ((p->mask & (1 << num)) != 0) {
+      printf("%d: syscall %s -> %d\n", p->pid, syscallName[num], p->trapframe->a0);
+    }
   }
   else {
     printf("%d %s: unknown sys call %d\n", p->pid, p->name, num);
