@@ -5,6 +5,7 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "defs.h"
+#include "sysinfo.h"
 
 struct cpu cpus[NCPU];
 
@@ -607,11 +608,32 @@ void procdump(void) {
   }
 }
 
+// TODO: shell we need to lock the proc during the syscall
 // set tracing flag for this process
 int trace(int mask) {
   // set the mask to represent the system call to trace
-  struct proc *p = myproc();
-  p->mask = mask;
+  struct proc* p = myproc();
+  p->mask        = mask;
 
   return 0;
+}
+
+int getSysinfo(struct sysinfo* pinfo) {
+  pinfo->freemem = getFreemem();
+  pinfo->nproc   = getProcNum();
+
+  return 0;
+}
+
+uint64 getProcNum() {
+  uint64       procNum = 0;
+  struct proc* p;
+
+  for (p = proc; p < &proc[NPROC]; p++) {
+    if (p->state != UNUSED) {
+      procNum++;
+    }
+  }
+
+  return procNum;
 }

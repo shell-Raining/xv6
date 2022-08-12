@@ -92,27 +92,28 @@ extern uint64 sys_wait(void);
 extern uint64 sys_write(void);
 extern uint64 sys_uptime(void);
 extern uint64 sys_trace(void);
+extern uint64 sys_sysinfo(void);
 
 // ISSUE:为什么要返回uint类型的整数
+// 因为要返回给当前进程的 a0 寄存器
 static uint64 (*syscalls[])(void) = {
-  [SYS_fork] = sys_fork,   [SYS_exit] = sys_exit,     [SYS_wait] = sys_wait,
-  [SYS_pipe] = sys_pipe,   [SYS_read] = sys_read,     [SYS_kill] = sys_kill,
-  [SYS_exec] = sys_exec,   [SYS_fstat] = sys_fstat,   [SYS_chdir] = sys_chdir,
-  [SYS_dup] = sys_dup,     [SYS_getpid] = sys_getpid, [SYS_sbrk] = sys_sbrk,
-  [SYS_sleep] = sys_sleep, [SYS_uptime] = sys_uptime, [SYS_open] = sys_open,
-  [SYS_write] = sys_write, [SYS_mknod] = sys_mknod,   [SYS_unlink] = sys_unlink,
-  [SYS_link] = sys_link,   [SYS_mkdir] = sys_mkdir,   [SYS_close] = sys_close,
-  [SYS_trace] = sys_trace,
+  [SYS_fork] = sys_fork,   [SYS_exit] = sys_exit,       [SYS_wait] = sys_wait,
+  [SYS_pipe] = sys_pipe,   [SYS_read] = sys_read,       [SYS_kill] = sys_kill,
+  [SYS_exec] = sys_exec,   [SYS_fstat] = sys_fstat,     [SYS_chdir] = sys_chdir,
+  [SYS_dup] = sys_dup,     [SYS_getpid] = sys_getpid,   [SYS_sbrk] = sys_sbrk,
+  [SYS_sleep] = sys_sleep, [SYS_uptime] = sys_uptime,   [SYS_open] = sys_open,
+  [SYS_write] = sys_write, [SYS_mknod] = sys_mknod,     [SYS_unlink] = sys_unlink,
+  [SYS_link] = sys_link,   [SYS_mkdir] = sys_mkdir,     [SYS_close] = sys_close,
+  [SYS_trace] = sys_trace, [SYS_sysinfo] = sys_sysinfo,
 };
 
 static char* syscallName[] = {
-  [SYS_fork] = "fork",   [SYS_exit] = "exit",     [SYS_wait] = "wait",     [SYS_pipe] = "pipe",
-  [SYS_read] = "read",   [SYS_kill] = "kill",     [SYS_exec] = "exec",     [SYS_fstat] = "fstat",
-  [SYS_chdir] = "chdir", [SYS_dup] = "dup",       [SYS_getpid] = "getpid", [SYS_sbrk] = "sbrk",
-  [SYS_sleep] = "sleep", [SYS_uptime] = "uptime", [SYS_open] = "open",     [SYS_write] = "write",
-  [SYS_mknod] = "mknod", [SYS_unlink] = "unlink", [SYS_link] = "link",     [SYS_mkdir] = "mkdir",
-  [SYS_close] = "close", [SYS_trace] = "trace",
-};
+  [SYS_fork] = "fork",   [SYS_exit] = "exit",     [SYS_wait] = "wait",      [SYS_pipe] = "pipe",
+  [SYS_read] = "read",   [SYS_kill] = "kill",     [SYS_exec] = "exec",      [SYS_fstat] = "fstat",
+  [SYS_chdir] = "chdir", [SYS_dup] = "dup",       [SYS_getpid] = "getpid",  [SYS_sbrk] = "sbrk",
+  [SYS_sleep] = "sleep", [SYS_uptime] = "uptime", [SYS_open] = "open",      [SYS_write] = "write",
+  [SYS_mknod] = "mknod", [SYS_unlink] = "unlink", [SYS_link] = "link",      [SYS_mkdir] = "mkdir",
+  [SYS_close] = "close", [SYS_trace] = "trace",   [SYS_sysinfo] = "sysinfo"};
 
 // 本函数在陷入后使用，从trapframe中获得调用参数，选择合适的系统调用
 void syscall(void) {
@@ -124,7 +125,6 @@ void syscall(void) {
     p->trapframe->a0 = syscalls[num]();
 
     // determine whether the upcomming syscall is trace enabled
-    // TODO: implement tracking of fork
     if ((p->mask & (1 << num)) != 0) {
       printf("%d: syscall %s -> %d\n", p->pid, syscallName[num], p->trapframe->a0);
     }
