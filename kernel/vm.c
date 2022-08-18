@@ -6,17 +6,18 @@
 #include "defs.h"
 #include "fs.h"
 
-/*
- * the kernel's page table.
- */
+// the kernel's page table.
 pagetable_t kernel_pagetable;
 
 extern char etext[];  // kernel.ld sets this to end of kernel code.
 
 extern char trampoline[];  // trampoline.S
 
-// Make a direct-map page table for the kernel.
-pagetable_t kvmmake(void) {
+//******************************************************************************
+//! @brief make a direct-map page table for the kernel
+//! @return a addr that points to pagetable
+//******************************************************************************
+static pagetable_t kvmmake(void) {
   pagetable_t kpgtbl;
 
   kpgtbl = (pagetable_t)kalloc();
@@ -47,31 +48,25 @@ pagetable_t kvmmake(void) {
   return kpgtbl;
 }
 
-// Initialize the one kernel_pagetable
-void kvminit(void) {
-  kernel_pagetable = kvmmake();
-}
-
-// Switch h/w page table register to the kernel's page table,
-// and enable paging.
-void kvminithart() {
-  w_satp(MAKE_SATP(kernel_pagetable));
-  sfence_vma();
-}
-
-// Return the address of the PTE in page table pagetable
-// that corresponds to virtual address va.  If alloc!=0,
-// create any required page-table pages.
-//
-// The risc-v Sv39 scheme has three levels of page-table
-// pages. A page-table page contains 512 64-bit PTEs.
-// A 64-bit virtual address is split into five fields:
-//   39..63 -- must be zero.
-//   30..38 -- 9 bits of level-2 index.
-//   21..29 -- 9 bits of level-1 index.
-//   12..20 -- 9 bits of level-0 index.
-//    0..11 -- 12 bits of byte offset within the page.
-pte_t* walk(pagetable_t pagetable, uint64 va, int alloc) {
+//******************************************************************************
+//! @brief Return the address of the PTE in page table pagetable
+//!        that corresponds to virtual address va.  If alloc!=0,
+//!        create any required page-table pages.
+//! @param pagetable is a pointer
+//! @param va virtual address
+//! @param alloc if alloc, detemined by caller
+//! @return a pointer points to the lowest PTE, if not vaild and cant alloc return 0
+//! @note  The risc-v Sv39 scheme has three levels of page-tabl
+//!        pages. A page-table page contains 512 64-bit PTEs.
+//!        A 64-bit virtual address is split into five fields:
+//!        39..63 -- must be zero.
+//!        30..38 -- 9 bits of level-2 index.
+//!        21..29 -- 9 bits of level-1 index.
+//!        12..20 -- 9 bits of level-0 index.
+//!        0..11 --12 bits of byte offset within the page.
+//! @warning the return PTE need check if valid
+//******************************************************************************
+static pte_t* walk(pagetable_t pagetable, uint64 va, int alloc) {
   if (va >= MAXVA)
     panic("walk");
 
@@ -90,9 +85,37 @@ pte_t* walk(pagetable_t pagetable, uint64 va, int alloc) {
   return &pagetable[PX(0, va)];
 }
 
-// Look up a virtual address, return the physical address,
-// or 0 if not mapped.
-// Can only be used to look up user pages.
+//******************************************************************************
+//! @brief Initialize the global kernel_pagetable
+//******************************************************************************
+void kvminit(void) {
+  kernel_pagetable = kvmmake();
+}
+
+//******************************************************************************
+//! @brief Switch h/w page table register to the kernel's page table and enable paging.
+//******************************************************************************
+void kvminithart() {
+  w_satp(MAKE_SATP(kernel_pagetable));
+  sfence_vma();
+}
+
+//******************************************************************************
+//! @brief add a mappings to the kernel page table
+//! @param [out] kpgtbl, points to the kernel_pagetable
+//! @note  only use when booting, does not flush TLB or enable paging
+//******************************************************************************
+void kvmmap(pagetable_t kpgtbl, uint64 va, uint64 pa, uint64 sz, int perm) {
+  if (mappages(kpgtbl, va, sz, pa, perm) != 0)
+    panic("kvmmap");
+}
+
+//******************************************************************************
+//! @brief look up virtual addr, return physical addr
+//! @param pagetable
+//! @param va
+//! @return pa is 0 if not mapped or can not be used by user
+//******************************************************************************
 uint64 walkaddr(pagetable_t pagetable, uint64 va) {
   pte_t* pte;
   uint64 pa;
@@ -103,44 +126,38 @@ uint64 walkaddr(pagetable_t pagetable, uint64 va) {
   pte = walk(pagetable, va, 0);
   if (pte == 0)
     return 0;
-  if ((*pte & PTE_V) == 0)
-    return 0;
-  if ((*pte & PTE_U) == 0)
+  if (((*pte & PTE_V) == 0) || ((*pte & PTE_U) == 0))
     return 0;
   pa = PTE2PA(*pte);
+
   return pa;
 }
 
-// add a mapping to the kernel page table.
-// only used when booting.
-// does not flush TLB or enable paging.
-void kvmmap(pagetable_t kpgtbl, uint64 va, uint64 pa, uint64 sz, int perm) {
-  if (mappages(kpgtbl, va, sz, pa, perm) != 0)
-    panic("kvmmap");
-}
-
-// Create PTEs for virtual addresses starting at va that refer to
-// physical addresses starting at pa. va and size might not
-// be page-aligned. Returns 0 on success, -1 if walk() couldn't
-// allocate a needed page-table page.
+//******************************************************************************
+//! @brief create PTE mapping va lowerBound to pa
+//! @return return 0 for success, -1 for walk() couldn't alloc pagetable
+//! @note  va and size might not be page-aligned.
+//******************************************************************************
 int mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm) {
-  uint64 a, last;
+  uint64 lowerBound, last;
   pte_t* pte;
 
   if (size == 0)
     panic("mappages: size");
 
-  a    = PGROUNDDOWN(va);
-  last = PGROUNDDOWN(va + size - 1);
+  lowerBound = PGROUNDDOWN(va);
+  last       = PGROUNDDOWN(va + size - 1);
   for (;;) {
-    if ((pte = walk(pagetable, a, 1)) == 0)
+    if ((pte = walk(pagetable, lowerBound, 1)) == 0)
       return -1;
     if (*pte & PTE_V)
       panic("mappages: remap");
     *pte = PA2PTE(pa) | perm | PTE_V;
-    if (a == last)
+
+    // check if alloc finished
+    if (lowerBound == last)
       break;
-    a += PGSIZE;
+    lowerBound += PGSIZE;
     pa += PGSIZE;
   }
   return 0;
@@ -161,6 +178,7 @@ void uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free) {
       panic("uvmunmap: walk");
     if ((*pte & PTE_V) == 0)
       panic("uvmunmap: not mapped");
+    // ISSUE: 这个 panic 是什么
     if (PTE_FLAGS(*pte) == PTE_V)
       panic("uvmunmap: not a leaf");
     if (do_free) {

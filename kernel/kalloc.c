@@ -56,9 +56,10 @@ void kfree(void* pa) {
   release(&kmem.lock);
 }
 
-// Allocate one 4096-byte page of physical memory.
-// Returns a pointer that the kernel can use.
-// Returns 0 if the memory cannot be allocated.
+//******************************************************************************
+//! @brief alloc 4KB page and return the pointer
+//! @return a void ptr if alloc succeeded, 0 if failed
+//******************************************************************************
 void* kalloc(void) {
   struct run* r;
 

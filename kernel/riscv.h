@@ -266,6 +266,7 @@ static inline void sfence_vma() {
 // shift a physical address to the right place for a PTE.
 #define PA2PTE(pa) ((((uint64)pa) >> 12) << 10)
 
+// 获取指定 PTE 所表示的物理地址，首先将十位 flag 去掉，然后左移即可
 #define PTE2PA(pte) (((pte) >> 10) << 12)
 
 #define PTE_FLAGS(pte) ((pte)&0x3FF)
