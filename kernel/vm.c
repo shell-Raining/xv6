@@ -71,7 +71,9 @@ static pte_t* walk(pagetable_t pagetable, uint64 va, int alloc) {
     panic("walk");
 
   for (int level = 2; level > 0; level--) {
-    pte_t* pte = &pagetable[PX(level, va)];
+    // TODO:easy for debugging, nedded delete
+    int    index = PX(level, va);
+    pte_t* pte   = &pagetable[index];
     if (*pte & PTE_V) {
       pagetable = (pagetable_t)PTE2PA(*pte);
     }
@@ -163,9 +165,10 @@ int mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
   return 0;
 }
 
-// Remove npages of mappings starting from va. va must be
-// page-aligned. The mappings must exist.
-// Optionally free the physical memory.
+//******************************************************************************
+//! @brief remove mappings starting from va, and len is 4K*npages, do_free is Optionally
+//! @note  va must be page-aligned, mapping must exist
+//******************************************************************************
 void uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free) {
   uint64 a;
   pte_t* pte;
@@ -189,8 +192,10 @@ void uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free) {
   }
 }
 
-// create an empty user page table.
-// returns 0 if out of memory.
+//******************************************************************************
+//! @brief create empty user page table
+//! @return return 0 if out of memory
+//******************************************************************************
 pagetable_t uvmcreate() {
   pagetable_t pagetable;
   pagetable = (pagetable_t)kalloc();
@@ -200,9 +205,10 @@ pagetable_t uvmcreate() {
   return pagetable;
 }
 
-// Load the user initcode into address 0 of pagetable,
-// for the very first process.
-// sz must be less than a page.
+//******************************************************************************
+//! @brief load user initcode into address 0 of pagetable for the very first process
+//! @note  sz must be less than a page
+//******************************************************************************
 void uvminit(pagetable_t pagetable, uchar* src, uint sz) {
   char* mem;
 
