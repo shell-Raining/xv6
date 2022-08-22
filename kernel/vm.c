@@ -13,10 +13,10 @@ extern char etext[];  // kernel.ld sets this to end of kernel code.
 
 extern char trampoline[];  // trampoline.S
 
-//******************************************************************************
+//------------------------------------------------------------------------------
 //! @brief make a direct-map page table for the kernel
 //! @return a addr that points to pagetable
-//******************************************************************************
+//------------------------------------------------------------------------------
 static pagetable_t kvmmake(void) {
   pagetable_t kpgtbl;
 
@@ -48,7 +48,7 @@ static pagetable_t kvmmake(void) {
   return kpgtbl;
 }
 
-//******************************************************************************
+//------------------------------------------------------------------------------
 //! @brief Return the address of the PTE in page table pagetable
 //!        that corresponds to virtual address va.  If alloc!=0,
 //!        create any required page-table pages.
@@ -65,7 +65,7 @@ static pagetable_t kvmmake(void) {
 //!        12..20 -- 9 bits of level-0 index.
 //!        0..11 --12 bits of byte offset within the page.
 //! @warning the return PTE need check if valid
-//******************************************************************************
+//------------------------------------------------------------------------------
 static pte_t* walk(pagetable_t pagetable, uint64 va, int alloc) {
   if (va >= MAXVA)
     panic("walk");
@@ -87,37 +87,37 @@ static pte_t* walk(pagetable_t pagetable, uint64 va, int alloc) {
   return &pagetable[PX(0, va)];
 }
 
-//******************************************************************************
+//------------------------------------------------------------------------------
 //! @brief Initialize the global kernel_pagetable
-//******************************************************************************
+//------------------------------------------------------------------------------
 void kvminit(void) {
   kernel_pagetable = kvmmake();
 }
 
-//******************************************************************************
+//------------------------------------------------------------------------------
 //! @brief Switch h/w page table register to the kernel's page table and enable paging.
-//******************************************************************************
+//------------------------------------------------------------------------------
 void kvminithart() {
   w_satp(MAKE_SATP(kernel_pagetable));
   sfence_vma();
 }
 
-//******************************************************************************
+//------------------------------------------------------------------------------
 //! @brief add a mappings to the kernel page table
 //! @param [out] kpgtbl, points to the kernel_pagetable
 //! @note  only use when booting, does not flush TLB or enable paging
-//******************************************************************************
+//------------------------------------------------------------------------------
 void kvmmap(pagetable_t kpgtbl, uint64 va, uint64 pa, uint64 sz, int perm) {
   if (mappages(kpgtbl, va, sz, pa, perm) != 0)
     panic("kvmmap");
 }
 
-//******************************************************************************
+//------------------------------------------------------------------------------
 //! @brief look up virtual addr, return physical addr
 //! @param pagetable
 //! @param va
 //! @return pa is 0 if not mapped or can not be used by user
-//******************************************************************************
+//------------------------------------------------------------------------------
 uint64 walkaddr(pagetable_t pagetable, uint64 va) {
   pte_t* pte;
   uint64 pa;
@@ -135,11 +135,11 @@ uint64 walkaddr(pagetable_t pagetable, uint64 va) {
   return pa;
 }
 
-//******************************************************************************
+//------------------------------------------------------------------------------
 //! @brief create PTE mapping va lowerBound to pa
 //! @return return 0 for success, -1 for walk() couldn't alloc pagetable
 //! @note  va and size might not be page-aligned.
-//******************************************************************************
+//------------------------------------------------------------------------------
 int mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm) {
   uint64 lowerBound, last;
   pte_t* pte;
@@ -165,10 +165,10 @@ int mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
   return 0;
 }
 
-//******************************************************************************
+//------------------------------------------------------------------------------
 //! @brief remove mappings starting from va, and len is 4K*npages, do_free is Optionally
 //! @note  va must be page-aligned, mapping must exist
-//******************************************************************************
+//------------------------------------------------------------------------------
 void uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free) {
   uint64 a;
   pte_t* pte;
@@ -181,7 +181,7 @@ void uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free) {
       panic("uvmunmap: walk");
     if ((*pte & PTE_V) == 0)
       panic("uvmunmap: not mapped");
-    // ISSUE: 这个 panic 是什么
+    // ISSUE: why use this panic
     if (PTE_FLAGS(*pte) == PTE_V)
       panic("uvmunmap: not a leaf");
     if (do_free) {
@@ -192,10 +192,10 @@ void uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free) {
   }
 }
 
-//******************************************************************************
+//------------------------------------------------------------------------------
 //! @brief create empty user page table
 //! @return return 0 if out of memory
-//******************************************************************************
+//------------------------------------------------------------------------------
 pagetable_t uvmcreate() {
   pagetable_t pagetable;
   pagetable = (pagetable_t)kalloc();
@@ -205,10 +205,10 @@ pagetable_t uvmcreate() {
   return pagetable;
 }
 
-//******************************************************************************
+//------------------------------------------------------------------------------
 //! @brief load user initcode into address 0 of pagetable for the very first process
 //! @note  sz must be less than a page
-//******************************************************************************
+//------------------------------------------------------------------------------
 void uvminit(pagetable_t pagetable, uchar* src, uint sz) {
   char* mem;
 
@@ -262,8 +262,8 @@ uint64 uvmdealloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz) {
   return newsz;
 }
 
-// Recursively free page-table pages.
-// All leaf mappings must already have been removed.
+// Recursively free page-table pages. All leaf mappings must already have been removed.
+// every page in pgtbl was set only PTE_V
 void freewalk(pagetable_t pagetable) {
   // there are 2^9 = 512 PTEs in a page table.
   for (int i = 0; i < 512; i++) {
@@ -275,14 +275,15 @@ void freewalk(pagetable_t pagetable) {
       pagetable[i] = 0;
     }
     else if (pte & PTE_V) {
-      panic("freewalk: leaf");
+      panic("freewalk: leaf not free");
     }
   }
   kfree((void*)pagetable);
 }
 
-// Free user memory pages,
-// then free page-table pages.
+// -------------------------------------------------------------------------------- 
+// Free user memory pages, then free page-table pages.
+// -------------------------------------------------------------------------------- 
 void uvmfree(pagetable_t pagetable, uint64 sz) {
   if (sz > 0)
     uvmunmap(pagetable, 0, PGROUNDUP(sz) / PGSIZE, 1);
