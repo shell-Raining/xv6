@@ -281,10 +281,12 @@ void freewalk(pagetable_t pagetable) {
   kfree((void*)pagetable);
 }
 
-// -------------------------------------------------------------------------------- 
+// --------------------------------------------------------------------------------
 // Free user memory pages, then free page-table pages.
-// -------------------------------------------------------------------------------- 
+// --------------------------------------------------------------------------------
 void uvmfree(pagetable_t pagetable, uint64 sz) {
+  // ISSUE: what is the meaining of sz>0
+  // when free the whole process, we can set sz to p->sz
   if (sz > 0)
     uvmunmap(pagetable, 0, PGROUNDUP(sz) / PGSIZE, 1);
   freewalk(pagetable);
