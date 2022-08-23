@@ -64,7 +64,30 @@ uint64 sys_sleep(void) {
 
 #ifdef LAB_PGTBL
 int sys_pgaccess(void) {
-  // lab pgtbl: your code here.
+  uint64 va;
+  int    n;
+  uint64 bufAddr;
+
+  if (argaddr(0, &va) < 0) {
+    return -1;
+  }
+  if (argint(1, &n) < 0) {
+    return -1;
+  }
+  if (argaddr(2, &bufAddr) < 0) {
+    return -1;
+  }
+
+  uint64 mask = pgaccess(va, n, bufAddr);
+
+  if (mask < 0) {
+    return -1;
+  }
+
+  if (copyout(myproc()->pagetable, bufAddr, (char*)(&mask), sizeof(int)) < 0) {
+    return -1;
+  }
+
   return 0;
 }
 #endif

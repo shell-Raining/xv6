@@ -5,6 +5,8 @@
 #include "riscv.h"
 #include "defs.h"
 #include "fs.h"
+#include "spinlock.h"
+#include "proc.h"
 
 // the kernel's page table.
 pagetable_t kernel_pagetable;
@@ -12,6 +14,8 @@ pagetable_t kernel_pagetable;
 extern char etext[];  // kernel.ld sets this to end of kernel code.
 
 extern char trampoline[];  // trampoline.S
+
+struct proc;
 
 //------------------------------------------------------------------------------
 //! @brief make a direct-map page table for the kernel
@@ -452,4 +456,30 @@ static void vmPrintTable(pagetable_t pgtbl, int level) {
 void vmprint(pagetable_t pgtbl) {
   printf("page table %p\n", pgtbl);
   vmPrintTable(pgtbl, 2);
+}
+
+uint64 pgaccess(uint64 va, int n, uint64 bufAddr) {
+  if (n > MAXCHECKSZ) {
+    return -1;
+  }
+
+  uint64      mask  = 0;
+  pagetable_t pgtbl = myproc()->pagetable;
+
+  for (int i = 0; i < n; i++) {
+    uint64 curVa = va + PGSIZE * i;
+    pte_t* pte   = walk(pgtbl, curVa, 0);
+
+    if (pte == 0) {
+      return -1;
+    }
+    if (*pte & PTE_A) {
+      // set mask
+      mask = mask | (1 << i);
+      // unset the PTE_A flag in pte
+      *pte = *pte & (~PTE_A);
+    }
+  }
+
+  return mask;
 }

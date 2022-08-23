@@ -5,7 +5,6 @@
       "-c",
       "-DSOL_PGTBL",
       "-DLAB_PGTBL",
-      "-Werror",
       "-Wall",
       "-I.",
       "-o",
